@@ -1,0 +1,23 @@
+// Pseudo-code pour l'ALU
+module ALU(
+    input [31:0] A, // Premier opérande
+    input [31:0] B, // Deuxième opérande ou immédiat
+    input [3:0] ALUOp, // Code d'opération ALU
+    output reg [31:0] ALUResult // Résultat de l'ALU
+);
+
+// Codes d'opération
+parameter ADD = 4'b0000;
+parameter LSL = 4'b0001;
+parameter ADDI = 4'b0010;
+
+always @(*) begin
+    case(ALUOp)
+        ADD: ALUResult = A + B;
+        LSL: ALUResult = A << B;
+        ADDI: ALUResult = A + B; // B contient ici la valeur immédiate
+        // autres opérations
+        default: ALUResult = 32'b0;
+    endcase
+end
+endmodule
