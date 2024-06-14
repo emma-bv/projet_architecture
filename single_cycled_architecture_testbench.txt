@@ -1,0 +1,44 @@
+module SingleCycleCPU_tb;
+    reg clk;
+    reg reset;
+    wire [31:0] X12, X13, X14, X15;
+
+    // Instantiate the SingleCycleCPU
+    SingleCycleCPU uut (
+        .clk(clk),
+        .reset(reset),
+        .X12(X12),
+        .X13(X13),
+        .X14(X14),
+        .X15(X15)
+    );
+
+    // Clock generation
+    initial begin
+        clk = 0;
+        forever #5 clk = ~clk;
+    end
+
+    // Test sequence
+    initial begin
+        // Open a waveform file
+        $dumpfile("waveform.vcd");
+        // Dump all signals
+        $dumpvars(0, SingleCycleCPU_tb);
+
+        reset = 1;
+        #10 reset = 0;
+
+        // Wait for the processor to complete
+        #2000;
+
+        // Check results
+        $display("X12: %d", X12);
+        $display("X13: %d", X13);
+        $display("X14: %d", X14);
+        $display("X15: %d", X15);
+
+        // End the simulation
+        $stop;
+    end
+endmodule

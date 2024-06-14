@@ -1,0 +1,115 @@
+module ALU(
+    input [31:0] A, B,
+    input [3:0] ALUControl,
+    output reg [31:0] ALUResult
+);
+    always @(*) begin
+        case(ALUControl)
+            4'b0000: ALUResult = A + B;            // ADD
+            4'b0001: ALUResult = A << B[4:0];      // LSL (Shift amount should be lower 5 bits)
+            4'b0010: ALUResult = A + B;            // ADDI
+            default: ALUResult = 32'b0;
+        endcase
+    end
+endmodule
+module SingleCycleCPU(
+    input clk,
+    input reset,
+    output reg [31:0] X12, X13, X14, X15
+);
+    reg [31:0] PC;
+    reg [31:0] RegisterFile [0:31];
+    reg [31:0] InstructionMemory [0:63];
+    reg [31:0] DataMemory [0:255];
+
+    wire [31:0] Instruction;
+    wire [31:0] ALUResult;
+    wire [4:0] shamt;  // Shift amount for LSL
+
+    // Load instructions and data into memory
+    initial begin
+        // Initialize Instruction Memory with instructions
+        InstructionMemory[0]  = 32'hbfa00005; // ADD    X5, X31, X31
+        InstructionMemory[1]  = 32'hbfa00614; // ADDI   X6, X31, #20
+        InstructionMemory[2]  = 32'hd69f03e0; // B      ENT (skip the next instructions, set as a pseudo branch)
+        InstructionMemory[3]  = 32'hd360210a; // LSL    X10, X5, #3
+        InstructionMemory[4]  = 32'h8b0a00eb; // ADD    X11, X1, X10
+        InstructionMemory[5]  = 32'hf840018c; // LDUR   X12, [X11, #0]
+        InstructionMemory[6]  = 32'hf840028d; // LDUR   X13, [X11, #8]
+        InstructionMemory[7]  = 32'hcb0d018e; // SUB    X14, X12, X13
+        InstructionMemory[8]  = 32'h8b0a01ef; // ADD    X15, X2, X10
+        InstructionMemory[9]  = 32'hf800018e; // STUR   X14, [X15, #0]
+        InstructionMemory[10] = 32'h910014a5; // ADDI   X5, X5, #2
+        InstructionMemory[11] = 32'hcb1600f0; // SUB    X16, X5, X6
+        InstructionMemory[12] = 32'hb4000160; // CBZ    END
+        InstructionMemory[13] = 32'h17fffffc; // B      TOP
+        InstructionMemory[14] = 32'hd65f03c0; // END
+
+        // Initialize Data Memory with values for Group C
+        DataMemory[0]  = 0;
+        DataMemory[8]  = 19;
+        DataMemory[16] = 36;
+        DataMemory[24] = 51;
+        DataMemory[32] = 64;
+        DataMemory[40] = 75;
+        DataMemory[48] = 84;
+        DataMemory[56] = 91;
+        DataMemory[64] = 96;
+        DataMemory[72] = 99;
+        DataMemory[80] = 100;
+        DataMemory[88] = 99;
+        DataMemory[96] = 96;
+        DataMemory[104] = 91;
+        DataMemory[112] = 84;
+        DataMemory[120] = 75;
+        DataMemory[128] = 64;
+        DataMemory[136] = 51;
+        DataMemory[144] = 36;
+        DataMemory[152] = 19;
+        DataMemory[160] = 0;
+
+        // Initialize Register File
+        RegisterFile[0] = 0;
+        RegisterFile[1] = 0;   // Base address for data memory
+        RegisterFile[2] = 8;   // Offset for data memory
+        RegisterFile[31] = 0;  // Zero register
+    end
+
+    // Fetch instruction
+    assign Instruction = InstructionMemory[PC[7:0] >> 2];  // Word-aligned memory access
+
+    // ALU instance
+    assign shamt = Instruction[4:0];  // Shift amount for LSL
+    ALU alu(
+        .A(RegisterFile[Instruction[9:5]]), 
+        .B((Instruction[3:0] == 4'b0001) ? shamt : RegisterFile[Instruction[4:0]]), 
+        .ALUControl(Instruction[3:0]), 
+        .ALUResult(ALUResult)
+    );
+
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            PC <= 0;
+        end else begin
+            case (Instruction[31:28])
+                4'b0000: RegisterFile[Instruction[11:7]] <= ALUResult; // ADD
+                4'b0001: RegisterFile[Instruction[11:7]] <= ALUResult; // LSL
+                4'b0010: RegisterFile[Instruction[11:7]] <= ALUResult; // ADDI
+                4'b1101: begin
+                    if (ALUResult == 0)
+                        PC <= Instruction[27:0];  // Branch
+                end
+                default: ;
+            endcase
+            // Update PC to next instruction if no branch taken
+            PC <= PC + 4;
+
+            // Update registers for testing purposes
+            X12 <= RegisterFile[12];
+            X13 <= RegisterFile[13];
+            X14 <= RegisterFile[14];
+            X15 <= RegisterFile[15];
+        end
+    end
+endmodule
+
