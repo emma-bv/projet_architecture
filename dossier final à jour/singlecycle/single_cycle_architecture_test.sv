@@ -1,16 +1,16 @@
-module ALU_Test;
+module SingleCycleProcessor_tb;
 
     reg clk;
     reg reset;
 
-    PipelinedProcessor pp (
+    SingleCycleProcessor scp (
         .clk(clk),
         .reset(reset)
     );
 
     initial begin
         $dumpfile("dump.vcd");
-        $dumpvars(0, ALU_Test);
+        $dumpvars(0, SingleCycleProcessor_tb);
         
         // Initialisation
         clk = 0;
